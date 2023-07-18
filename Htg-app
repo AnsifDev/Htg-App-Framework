@@ -1,0 +1,240 @@
+#!/bin/python3
+
+import json
+import os
+import sys
+
+def args_extracter(argv):
+    args = []
+    kwargs = {}
+    files = []
+
+    for arg in argv:
+        if not arg.startswith("--"): files.append(arg)
+        else:
+            s = arg[2:]
+            kv_pair = s.split("=")
+            if len(kv_pair) == 1: args.append(kv_pair[0])
+            else:
+                key = kv_pair[0]
+                value = kv_pair[1].replace("\"", "")
+                kwargs[key] = value
+    
+    return tuple(args), kwargs, files
+
+init_imports = """import sys
+from Htg import Application\n"""
+
+application_check = """if not issubclass($component, Application): raise Exception("Invalid Application Class")\n"""
+
+application_init = """
+Manifest = { "components": dict() }
+App = $application("$id", Manifest, "$pkg_dir")
+"""
+
+component_import = """from py.$component import $component\n"""
+manifest_register = """Manifest["components"]["$component"] = { "class": $component, "single-instance": $single, "custom-header": $header }\n"""
+
+app_run_cmd = """
+App.run(sys.argv[1:])
+"""
+
+flatpak_manifest = {
+    "runtime" : "org.gnome.Sdk",
+    "runtime-version" : "44",
+    "sdk" : "org.gnome.Sdk",
+    "modules" : [
+        {
+        "name" : "main",
+        "buildsystem" : "simple",
+        "sources" : [
+            {
+            "path" : "src",
+            "type" : "dir"
+            }
+        ],
+        "build-commands" : [
+            "install -D Htg/app/app /app/bin/app",
+            "cp -r * /app/"
+        ]
+        }
+    ],
+    "finish-args": [
+        "--socket=wayland",
+        "--socket=x11",
+        "--socket=fallback-x11",
+        "--share=ipc",
+        "--device=dri"
+    ]
+}
+
+Htg_manifest = {
+    "id": "com.my.example",
+    "components": []
+}
+
+def build_main(manifest: dict, run_as_flatpak):
+    if not os.path.exists("src"):
+        os.mkdir("src")
+        if os.system("cp -r libhtg src/Htg") != 0: exit(-1)
+        os.mkdir("src/py")
+        os.mkdir("src/ui")
+        os.mkdir("src/app")
+
+    main_file_string = init_imports
+    if "application" in manifest:
+        main_file_string += "\n"+(component_import+application_check).replace("$component", manifest["application"])
+        application_class_name = manifest["application"]
+    else: application_class_name = "Application"
+
+    pkg_dir = "/app" if run_as_flatpak else "src"
+    
+    main_file_string += application_init.replace("$application", application_class_name).replace("$id", manifest["id"]).replace("$pkg_dir", pkg_dir)
+    if "launcher" in manifest: main_file_string += """\nManifest["launcher"] = \""""+manifest["launcher"]+"\"\n\n"
+
+    for component in manifest["components"]:
+        single = str(component["single-instance"]) if "single-instance" in component else "False"
+        header = str(component["custom-header"]) if "custom-header" in component else "False"
+        main_file_string += (component_import+manifest_register).replace("$component", component["class"]).replace("$single", single).replace("$header", header)
+
+    main_file_string += app_run_cmd
+
+    # print(main_file_string)
+    with open("src/main.py", "w") as file: file.write(main_file_string)
+
+def build_flatpak_manifest(manifest):
+    flatpak_manifest["id"] = manifest["id"]
+    for key in manifest:
+        if not key.startswith("--flatpak-"): continue
+
+        if key == "--flatpak-modules":
+            for module in manifest[key]:
+                flatpak_manifest["modules"].append(module)
+            continue
+
+        if key == "--flatpak-finish-args":
+            for arg in manifest[key]:
+                if arg not in flatpak_manifest["finish-args"]:
+                    flatpak_manifest["finish-args"].append(arg)
+            continue
+
+        flatpak_manifest[key.replace("--flatpak-", "")] = manifest[key]
+    
+    flatpak_manifest["command"] = "app"
+    build_cmds = flatpak_manifest["modules"][0]["build-commands"]
+    id = manifest["id"]
+    if os.path.exists("src/app/app.desktop"): build_cmds.append("install -D app/app.desktop /app/share/applications/"+id+".desktop")
+    if os.path.exists("src/app/icon.svg"): build_cmds.append("install -D app/icon.svg /app/share/icons/hicolor/scalable/apps/"+id+".svg")
+    if os.path.exists("src/app/metainfo.xml"): build_cmds.append("install -D app/icon.svg /app/share/metainfo/"+id+".metadata.xml")
+    
+    flatpak_manifest_string = normalize_json(json.dumps(flatpak_manifest))
+    with open(manifest["id"]+".json", "w") as file: file.write(flatpak_manifest_string)
+
+def normalize_json(s: str):
+    s1 = s.replace(",", ",\n").replace("{", "{\n").replace("}", "\n}").replace("[", "[\n").replace("]", "\n]")
+    lines = s1.splitlines()
+    tabs = 0
+    s2 = ""
+    for line in lines:
+        line = line.strip()
+        if str(line).startswith("}") or str(line).startswith("]"): tabs -= 1
+        for i in range(tabs): line = "\t"+line
+        if str(line).endswith("{") or str(line).endswith("["): tabs += 1
+        s2 += line+"\n"
+    return s2
+
+def get_current_runtime():
+    filename = ".Htg-app/cache.dat"
+    if not os.path.exists(filename):
+        cmd = "lsb_release -ri > "+filename.replace(" ", "\\ ")
+        os.system(cmd)
+
+    with open(filename) as file: file_str_arr = file.read().splitlines()
+    version_code = file_str_arr[1].split(":")[1].strip()
+    distro = file_str_arr[0].split(":")[1].strip()
+
+    if distro == "Ubuntu":
+        if float(version_code) == 21.04: return 40
+        if float(version_code) == 21.10: return 41
+        if float(version_code) == 22.04: return 42
+        if float(version_code) == 22.10: return 43
+        if float(version_code) == 23.04: return 44
+        if float(version_code) == 23.10: return 45 
+        return -1
+    else: return -2
+
+def main():
+    args, kwargs, files = args_extracter(sys.argv[1:])
+    if not os.path.exists(".Htg-app"): os.mkdir(".Htg-app")
+
+    if not os.path.exists("manifest.json"):
+        if len(files) > 0: id = files[0]
+        else: id = input("Enter your app id: ")
+        Htg_manifest["id"] = id
+
+        current_runtime = get_current_runtime()
+        if current_runtime < 0:
+            if current_runtime == -1: print("Warning: This ubuntu is not supported for running GTK4 Apps.")
+            elif current_runtime == -2: print("Warning: Distro is unsupported by Htg-app.")
+            runtime_version = input("Please choose a GNOME runtime version (Supported above 40) (recommended is 44): ")
+            Htg_manifest["--flatpak-runtime-version"] = runtime_version
+        elif current_runtime != 44: Htg_manifest["--flatpak-runtime-version"] = str(current_runtime)
+
+        with open("manifest.json", "w") as file: file.write(normalize_json(json.dumps(Htg_manifest)))
+        manifest = Htg_manifest
+    else: 
+        with open("manifest.json") as file: s = file.read()
+        manifest = json.loads(s)
+    
+    run_as_flatpak = True
+    if "flatpak" not in args:
+        current_runtime = get_current_runtime()
+        if "--flatpak-runtime" in manifest and manifest["--flatpak-runtime"] not in ["org.gnome.Platform", "org.gnome.Sdk"]:
+            print("Warning: Cannot run in host system since host runtime is not gnome runtime")
+        elif str(current_runtime) != (manifest["--flatpak-runtime-version"] if "--flatpak-runtime-version" in manifest else "44"):
+            print("Warning: Cannot run in host system since host runtime version isn't matching with flatpak runtime version")
+        elif current_runtime < 0:
+            if current_runtime == -1: print("Warning: Cannot run in host system since host runtime version is not supported for GTK4 apps")    
+            elif current_runtime == -2: print("Warning: Cannot run in host system since the distro is unsupported by Htg-app.")
+            print("Running as GNOME 44")
+        else: run_as_flatpak = False
+
+        if run_as_flatpak: print("===============Forwording to Flatpak Build=================")
+
+    build_main(manifest, run_as_flatpak)
+
+    if run_as_flatpak:
+        build_flatpak_manifest(manifest)
+
+        if os.system("flatpak --version") != 0:
+            print("Err: Flatpak is not installed")
+            c = input("Proceed to install? [y/n]: ")
+            if c in ["Y", "y"]:
+                if os.system("sudo apt install flatpak flatpak-builder") != 0:
+                    print("Installation failed, please retry later")
+                    exit(5)
+                
+                runtime_version = manifest["--flatpak-runtime-version"] if "--flatpak-runtime-version" in manifest else "44"
+                if os.system("flatpak install org.gnome.Platform//"+runtime_version+" org.gnome.Sdk//"+runtime_version) != 0:
+                    print("Installation of runtime and sdk, please retry later")
+                    exit(6)
+            else: exit(5)
+        
+        elif os.system("flatpak-builder --version") != 0:
+            print("Err: Flatpak-builder is not installed")
+            c = input("Proceed to install? [y/n]: ")
+            if c in ["Y", "y"]:
+                if os.system("sudo apt install flatpak-builder") != 0:
+                    print("Installation failed, please retry later")
+                    exit(5)
+            else: exit(5)
+
+        if "build-bundle" in args:
+            if os.system("flatpak-builder .Htg-app/build "+manifest["id"]+".json"+" --force-clean --repo=repo") != 0: exit(1)
+            if os.system("flatpak build-bundle repo app.flatpak "+manifest["id"]) != 0: exit(3)
+        elif "build-manifest" not in args:
+            if os.system("flatpak-builder .Htg-app/build "+manifest["id"]+".json"+" --force-clean --user --install") != 0: exit(1)
+            if os.system("flatpak run "+manifest["id"]) != 0: exit(2)
+    elif os.system("python3 src/main.py") != 0: exit(4)
+
+main()

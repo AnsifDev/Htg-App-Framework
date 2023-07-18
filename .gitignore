@@ -1,0 +1,8 @@
+*
+!*.py
+!*.ui
+!.gitignore
+!Htg-app
+!libhtg
+!libhtg/*
+!libhtg/app/app

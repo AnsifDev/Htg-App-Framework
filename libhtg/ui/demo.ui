@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+	<object class="AdwBin" id="root">
+		<child>
+			<object class="AdwStatusPage">
+				<style><class name="compact"/></style>
+				<property name="title">No Activities Registered</property>
+				<property name="description">You created an empty application sucessfully. Add your activities for the app to function</property>
+				<property name="icon-name">dialog-information-symbolic</property>
+				<property name="vexpand">True</property>
+			</object>
+		</child>
+	</object>
+</interface>

@@ -44,7 +44,7 @@ class Application(Adw.Application):
         return builder, None
     
     def __build_window(self):
-        builder = Gtk.Builder.new_from_file(self._actual_path("Htg/ui/window.ui"))
+        builder = Gtk.Builder.new_from_file(os.path.join("/", *tuple(os.path.abspath(__file__).split("/")[:-2]), "ui/window.ui"))
         win = builder.get_object("window")
         win.set_application(self)
 
@@ -65,7 +65,8 @@ class Application(Adw.Application):
     def register_activity(self, label: str, activity_class: type):
         self.__activities[label] = activity_class
     
-    def _actual_path(self, path): return os.path.join(self.__pkg_dir, path)
+    def _actual_path(self, path: str): 
+        return os.path.join(self.__pkg_dir, path)
 
     def __activate(self, *args):
         print("Running")
@@ -78,7 +79,7 @@ class Application(Adw.Application):
 
             if "launcher" in self.__manifest:
                 self.__component_manager.start_activity(self.__manifest["launcher"])
-            else: self.__stack.add_child(self._build_ui("Htg/ui/demo.ui", "root")[1])
+            else: self.__stack.add_child(self._build_ui(os.path.join("/", *tuple(os.path.abspath(__file__).split("/")[:-2]), "ui/demo.ui"), "root")[1])
         self._win.present()
 
     def __shutdown(self, *args):

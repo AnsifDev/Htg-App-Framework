@@ -5,4 +5,5 @@
 !Htg-app
 !libhtg
 !libhtg/*
+!libhtg/*/*
 !libhtg/app/app

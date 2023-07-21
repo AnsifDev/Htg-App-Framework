@@ -2,6 +2,7 @@
 
 import json
 import os
+import site
 import sys
 
 def args_extracter(argv):
@@ -42,6 +43,13 @@ app_run_cmd = """
 App.run(sys.argv[1:])
 """
 
+site_locations = site.getsitepackages()
+for site_location in site_locations:
+    if site_location.startswith("/usr/lib"):
+        installed_loc = os.path.join(site_location, "Htg")
+        # if not os.path.exists(installed_loc): installed_loc = "Htg"
+        break
+
 flatpak_manifest = {
     "runtime" : "org.gnome.Platform",
     "runtime-version" : "44",
@@ -52,13 +60,13 @@ flatpak_manifest = {
             "buildsystem" : "simple",
             "sources" : [
                 {
-                "path" : "/lib/python3/dist-packages/Htg",
+                "path" : installed_loc,
                 "type" : "dir"
                 }
             ],
             "build-commands" : [
-                "mkdir -p /app/lib/python3/dist-packages/Htg",
-                "cp -r * /app/lib/python3/dist-packages/Htg"
+                "mkdir /app/Htg",
+				"cp -r * /app/Htg"
             ]
         },
         {

@@ -69,7 +69,6 @@ class Application(Adw.Application):
         return os.path.join(self.__pkg_dir, path)
 
     def __activate(self, *args):
-        print("Running")
         self._win = self.props.active_window
         if not self._win: 
             self._win = self.__build_window()

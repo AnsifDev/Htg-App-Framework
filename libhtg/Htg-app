@@ -82,7 +82,10 @@ flatpak_manifest = {
 				"cp -r * /app/",
 				"mkdir /app/bin",
 				"ln -s /app/main.py /app/bin/app"
-            ]
+            ],
+			"cleanup": [
+				"/app"
+			]
         }
     ],
     "finish-args": [

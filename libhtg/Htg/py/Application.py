@@ -10,7 +10,7 @@ from .Settings import Settings
 class Application(Adw.Application):
     __manifest = None
     __component_manager = None
-    __settings_refs = list[Settings]()
+    __settings_refs = dict[str, Settings]()
 
     def get_default(): return Htg.get_default_application()
 
@@ -71,9 +71,8 @@ class Application(Adw.Application):
         return os.path.join(self.__pkg_dir, path)
 
     def get_settings(self, filename: str) -> Settings:
-        s = Settings(filename)
-        self.__settings_refs.append(s)
-        return s
+        if filename not in self.__settings_refs: self.__settings_refs[filename] = Settings(filename)
+        return self.__settings_refs[filename]
 
     def __activate(self, *args):
         self._win = self.props.active_window
@@ -90,7 +89,7 @@ class Application(Adw.Application):
 
     def __shutdown(self, *args):
         self.__component_manager._shutdown()
-        for settings in self.__settings_refs: settings.save()
+        for filepath in self.__settings_refs: self.__settings_refs[filepath].save()
 
 def main():
     """The application's entry point."""

@@ -120,9 +120,10 @@ class Relation:
         return rtList
    
     def delete(self, condition_callback: Callable[[dict], bool] = None):
-        rtList = list()
+        rtList = list[dict[str, Any]]()
         i = 0
         while i < len(self.__dicts):
-            if not condition_callback or condition_callback(self.__dicts[i]): rtList.append(self.__dicts.pop(i))
+            if (not condition_callback) or condition_callback(self.__dicts[i]): 
+                rtList.append(self.__dicts.pop(i))
             else: i += 1
         return rtList

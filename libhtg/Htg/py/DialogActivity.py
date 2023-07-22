@@ -1,6 +1,6 @@
 import os, Htg
 
-class SubActivity:
+class DialogActivity:
     def _get_window(self): return Htg.get_default_application()._get_component_manager()._get_sub_activity_window(self)
 
     def _set_content(self, filename: str, id: str = None):

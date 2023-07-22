@@ -1,6 +1,6 @@
 from gi.repository import Gtk, Adw
 from .Activity import Activity
-from .SubActivity import SubActivity
+from .DialogActivity import DialogActivity
 
 class ComponentManager:
     __active_activity = None
@@ -98,12 +98,12 @@ class ComponentManager:
         if stack_empty: self.__stack_empty_cb()
         if self.__nav_button: self.__nav_button.set_visible(not self.is_stack_empty())
     
-    def start_sub_activity(self, component: Activity|SubActivity, label: str, req_id: int = None, *args):
+    def start_sub_activity(self, component: Activity|DialogActivity, label: str, req_id: int = None, *args):
         component_class = self.__components[label]["class"]
         custom_header = self.__components[label]["custom-header"]
 
-        if not isinstance(component, (Activity, SubActivity)): raise Exception("Invalid Component Class")
-        if not issubclass(component_class, SubActivity): raise Exception("Invalid Activity Class")
+        if not isinstance(component, (Activity, DialogActivity)): raise Exception("Invalid Component Class")
+        if not issubclass(component_class, DialogActivity): raise Exception("Invalid Activity Class")
 
         window = Adw.Window(transient_for = component._get_window(), default_height = 450, default_width = 340, modal = True)
         main_box = Gtk.Box(orientation = 1)
@@ -119,7 +119,7 @@ class ComponentManager:
 
     def _get_sub_activity_window(self, instance): return self.__sub_activity_params[instance][0]
 
-    def _end_sub_activity(self, instance: SubActivity, *responses): 
+    def _end_sub_activity(self, instance: DialogActivity, *responses): 
         component: Activity = None
         window, component, request = self.__sub_activity_params.pop(instance)
         window.destroy()

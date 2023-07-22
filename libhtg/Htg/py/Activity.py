@@ -6,7 +6,6 @@ class Activity:
     __window_close_request_handler = None
     
     def _set_content(self, filename: str, id: str = None):
-        from .Application import Application
         ui_file_path = path.join("ui", filename)
         self.__builder, self.__content = Htg.get_default_application()._build_ui(ui_file_path, id)
 

@@ -5,10 +5,12 @@ gi.require_version('Adw', '1')
 
 from gi.repository import Gtk, Gdk, Adw
 from .ComponentManager import ComponentManager
+from .Settings import Settings
 
 class Application(Adw.Application):
     __manifest = None
     __component_manager = None
+    __settings_refs = list[Settings]()
 
     def get_default(): return Htg.get_default_application()
 
@@ -68,6 +70,11 @@ class Application(Adw.Application):
     def _actual_path(self, path: str): 
         return os.path.join(self.__pkg_dir, path)
 
+    def get_settings(self, filename: str) -> Settings:
+        s = Settings(filename)
+        self.__settings_refs.append(s)
+        return s
+
     def __activate(self, *args):
         self._win = self.props.active_window
         if not self._win: 
@@ -83,6 +90,7 @@ class Application(Adw.Application):
 
     def __shutdown(self, *args):
         self.__component_manager._shutdown()
+        for settings in self.__settings_refs: settings.save()
 
 def main():
     """The application's entry point."""

@@ -1,3 +1,4 @@
+from threading import Timer
 from gi.repository import Gtk, Adw
 from .Activity import Activity
 from .DialogActivity import DialogActivity
@@ -24,7 +25,10 @@ class ComponentManager:
         if self.__active_activity:
             self.__active_activity._on_stopped()
         self.__active_activity = instance
+        # if instance: Timer(0.5, instance._on_started, args).start()
         if instance: instance._on_started(*args)
+
+    # def __perform_start_activity(self, *args)
     
     def __btn_clicked(self, *args):
         self._end_activity(self.__stack[-1])
@@ -106,6 +110,7 @@ class ComponentManager:
         if not issubclass(component_class, DialogActivity): raise Exception("Invalid Activity Class")
 
         window = Adw.Window(transient_for = component._get_window(), default_height = 450, default_width = 340, modal = True)
+        window.present()
         main_box = Gtk.Box(orientation = 1)
         window.set_content(main_box)
         if not custom_header: main_box.append(Adw.HeaderBar())
@@ -115,7 +120,6 @@ class ComponentManager:
         
         instance._on_create(*args)
         main_box.append(instance._get_content())
-        window.present()
 
     def _get_sub_activity_window(self, instance): return self.__sub_activity_params[instance][0]
 

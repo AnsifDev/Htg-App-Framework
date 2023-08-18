@@ -2,7 +2,7 @@ import json
 import os
 from typing import Callable
 
-from pyparsing import Any
+from typing import Any
 from gi.repository import GLib
 
 class Relation:

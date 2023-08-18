@@ -49,6 +49,7 @@ class Application(Adw.Application):
         builder = Gtk.Builder.new_from_file(os.path.join("/", *tuple(os.path.abspath(__file__).split("/")[:-2]), "ui/window.ui"))
         win = builder.get_object("window")
         win.set_application(self)
+        win.connect("show", self.__on_win_visible)
 
         self.__main_box = builder.get_object("main_box")
         self.__header = builder.get_object("header")
@@ -82,10 +83,13 @@ class Application(Adw.Application):
             self.__component_manager.set_navigation_button(self.__nav_button)
             self.__component_manager._set_header_state_change_callback(self.__header_state_changed)
 
-            if "launcher" in self.__manifest:
-                self.__component_manager.start_activity(self.__manifest["launcher"])
-            else: self.__stack.add_child(self._build_ui(os.path.join("/", *tuple(os.path.abspath(__file__).split("/")[:-2]), "ui/demo.ui"), "root")[1])
         self._win.present()
+
+    def __on_win_visible(self, *args):
+        # print("Hello")
+        if "launcher" in self.__manifest:
+            self.__component_manager.start_activity(self.__manifest["launcher"])
+        else: self.__stack.add_child(self._build_ui(os.path.join("/", *tuple(os.path.abspath(__file__).split("/")[:-2]), "ui/demo.ui"), "root")[1])
 
     def __shutdown(self, *args):
         self.__component_manager._shutdown()

@@ -4,6 +4,7 @@ from os import path
 from .Activity import Activity
 from gi.repository import Gtk
 
+
 class ActivityFragment:
     __content = None
     __window_close_request_handler = None
@@ -11,7 +12,10 @@ class ActivityFragment:
 
     def __init__(self, parent_activity: Activity, auto_started = True) -> None:
         parent_activity._associate_activity_fragment(self, auto_started)
+        self.__parent_activity = parent_activity
     
+    def _get_parent_activity(self): return self.__parent_activity
+
     def _set_content(self, filename: str, id: str = None):
         ui_file_path = path.join("ui", filename)
         self.__builder, self.__content = Htg.get_default_application()._build_ui(ui_file_path, id)

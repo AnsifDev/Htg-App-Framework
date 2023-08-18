@@ -3,7 +3,7 @@ import Htg
 
 from os import mkdir, path
 from gi.repository import GLib, GObject
-from pyparsing import Any
+from typing import Any
 from .Relation import Relation
 
 class Settings:
